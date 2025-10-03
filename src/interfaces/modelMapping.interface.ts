@@ -6,6 +6,10 @@ export interface IModelMappingsForWhere {
     slug: string;
     cuisines: string[];
     followers: string[];
+    location: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
   };
   User: {
     _id: string;

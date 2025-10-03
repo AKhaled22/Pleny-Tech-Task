@@ -7,9 +7,11 @@ import {
   Post,
   UseInterceptors,
   Req,
+  Query,
 } from '@nestjs/common';
 import { RestaurantsService } from './restaurants.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
+import { FindNearbyRestaurantsDto } from './dto/find-nearby-restaurants.dto';
 import { Restaurant } from './restaurant.schema';
 import { FilterInterceptor } from '../interceptors/filter.interceptor';
 import type { Request } from 'express';
@@ -30,6 +32,13 @@ export class RestaurantsController {
   ): Promise<Restaurant[]> {
     const where = request.where || {};
     return this.restaurantsService.findAll(where);
+  }
+
+  @Get('nearby')
+  async findNearby(
+    @Query() nearbyDto: FindNearbyRestaurantsDto,
+  ): Promise<Restaurant[]> {
+    return this.restaurantsService.findNearby(nearbyDto);
   }
 
   @Get(':identifier')

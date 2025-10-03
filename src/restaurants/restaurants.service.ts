@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
+import { FindNearbyRestaurantsDto } from './dto/find-nearby-restaurants.dto';
 import { Restaurant } from './restaurant.schema';
 @Injectable()
 export class RestaurantsService {
@@ -11,8 +12,19 @@ export class RestaurantsService {
   ) {}
 
   async create(createRestaurantDto: CreateRestaurantDto): Promise<Restaurant> {
-    const createdRestaurant =
-      await this.restaurantModel.create(createRestaurantDto);
+    const { coordinates, ...restaurantData } = createRestaurantDto;
+
+    const restaurantWithLocation = {
+      ...restaurantData,
+      location: {
+        type: 'Point',
+        coordinates: coordinates,
+      },
+    };
+
+    const createdRestaurant = await this.restaurantModel.create(
+      restaurantWithLocation,
+    );
     return createdRestaurant;
   }
 
@@ -37,5 +49,23 @@ export class RestaurantsService {
       .findByIdAndDelete({ _id: id })
       .exec();
     return deletedRestaurant;
+  }
+
+  async findNearby(nearbyDto: FindNearbyRestaurantsDto): Promise<Restaurant[]> {
+    const { longitude, latitude, radius = 1000 } = nearbyDto;
+
+    return this.restaurantModel
+      .find({
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [longitude, latitude],
+            },
+            $maxDistance: radius, // radius in meters
+          },
+        },
+      })
+      .exec();
   }
 }

@@ -29,6 +29,25 @@ export class Restaurant {
     default: [],
   })
   followers: User[];
+
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true,
+    },
+    coordinates: {
+      type: [Number],
+      required: true,
+    },
+  })
+  location: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+  };
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);
+
+// Create 2dsphere index for geospatial queries
+RestaurantSchema.index({ location: '2dsphere' });
