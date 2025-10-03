@@ -1,7 +1,18 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseInterceptors,
+  Req,
+} from '@nestjs/common';
 import { RestaurantsService } from './restaurants.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { Restaurant } from './restaurant.schema';
+import { FilterInterceptor } from '../interceptors/filter.interceptor';
+import type { Request } from 'express';
 
 @Controller('restaurants')
 export class RestaurantsController {
@@ -13,13 +24,19 @@ export class RestaurantsController {
   }
 
   @Get()
-  async findAll(): Promise<Restaurant[]> {
-    return this.restaurantsService.findAll();
+  @UseInterceptors(new FilterInterceptor<'Restaurant'>(['cuisines']))
+  async findAll(
+    @Req() request: Request & { where?: unknown },
+  ): Promise<Restaurant[]> {
+    const where = request.where || {};
+    return this.restaurantsService.findAll(where);
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Restaurant | null> {
-    return this.restaurantsService.findOne(id);
+  @Get(':identifier')
+  async findByIdOrSlug(
+    @Param('identifier') identifier: string,
+  ): Promise<Restaurant | null> {
+    return this.restaurantsService.findByIdOrSlug(identifier);
   }
 
   @Delete(':id')

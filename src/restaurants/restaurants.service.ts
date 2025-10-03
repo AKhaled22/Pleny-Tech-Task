@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { Restaurant } from './restaurant.schema';
-
 @Injectable()
 export class RestaurantsService {
   constructor(
@@ -17,8 +16,16 @@ export class RestaurantsService {
     return createdRestaurant;
   }
 
-  async findAll(): Promise<Restaurant[]> {
-    return this.restaurantModel.find().exec();
+  async findAll(where: any = {}): Promise<Restaurant[]> {
+    return this.restaurantModel.find(where).exec();
+  }
+
+  async findByIdOrSlug(identifier: string): Promise<Restaurant | null> {
+    if (isValidObjectId(identifier)) {
+      const restaurant = await this.restaurantModel.findById(identifier).exec();
+      if (restaurant) return restaurant;
+    }
+    return this.restaurantModel.findOne({ slug: identifier }).exec();
   }
 
   async findOne(id: string): Promise<Restaurant | null> {

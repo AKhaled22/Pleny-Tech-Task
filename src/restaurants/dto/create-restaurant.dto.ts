@@ -14,7 +14,7 @@ export class CreateRestaurantDto {
   readonly arabicName?: string;
 
   @IsString()
-  readonly uniqueName: string;
+  readonly slug: string;
 
   @IsString({ each: true })
   @ArrayMinSize(1)

@@ -13,7 +13,7 @@ export class Restaurant {
   arabicName: string;
 
   @Prop({ required: true, unique: true })
-  uniqueName: string;
+  slug: string;
 
   @Prop({
     type: [String],
