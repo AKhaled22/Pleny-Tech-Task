@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { RestaurantsModule } from './restaurants/restaurants.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import { UsersModule } from './users/users.module';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    MongooseModule.forRoot('mongodb://localhost:27017', {
+      dbName: 'PlenyDB',
+    }),
+    RestaurantsModule,
+    UsersModule,
+  ],
 })
 export class AppModule {}
