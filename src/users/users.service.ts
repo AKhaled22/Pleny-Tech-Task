@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, Types, isValidObjectId } from 'mongoose';
 import { FavoritesResponse } from './dto/favorites-response.dto';
 import { User } from './user.schema';
 
@@ -11,105 +16,146 @@ export class UsersService {
   ) {}
 
   async findAll(): Promise<User[]> {
-    return this.userModel.find().exec();
+    try {
+      return await this.userModel.find().exec();
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to retrieve users', error);
+    }
   }
 
   async findOne(id: string): Promise<User | null> {
-    return this.userModel.findOne({ _id: id }).exec();
+    try {
+      if (!isValidObjectId(id)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
+      const user = await this.userModel.findOne({ _id: id }).exec();
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+
+      return user;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to retrieve user');
+    }
   }
 
   async findFavorites(userId: string): Promise<FavoritesResponse> {
-    const userObjectId = new Types.ObjectId(userId);
-    const pipeline = [
-      {
-        $match: {
-          _id: userObjectId,
-        },
-      },
-      {
-        $project: {
-          favoriteCuisines: 1,
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          let: { userCuisines: '$favoriteCuisines' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $ne: ['$_id', userObjectId] },
-                    {
-                      $gt: [
-                        {
-                          $size: {
-                            $setIntersection: [
-                              '$favoriteCuisines',
-                              '$$userCuisines',
-                            ],
-                          },
-                        },
-                        0,
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                fullName: 1,
-                favoriteCuisines: 1,
-                following: 1,
-              },
-            },
-          ],
-          as: 'similarUsers',
-        },
-      },
-      {
-        $lookup: {
-          from: 'restaurants',
-          let: {
-            allFollowedRestaurants: {
-              $reduce: {
-                input: '$similarUsers.following',
-                initialValue: [],
-                in: {
-                  $setUnion: ['$$value', '$$this'],
-                },
-              },
-            },
+    try {
+      if (!isValidObjectId(userId)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
+      const userObjectId = new Types.ObjectId(userId);
+      const pipeline = [
+        {
+          $match: {
+            _id: userObjectId,
           },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $in: ['$_id', '$$allFollowedRestaurants'] },
+        },
+        {
+          $project: {
+            favoriteCuisines: 1,
+          },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            let: { userCuisines: '$favoriteCuisines' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $ne: ['$_id', userObjectId] },
+                      {
+                        $gt: [
+                          {
+                            $size: {
+                              $setIntersection: [
+                                '$favoriteCuisines',
+                                '$$userCuisines',
+                              ],
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  fullName: 1,
+                  favoriteCuisines: 1,
+                  following: 1,
+                },
+              },
+            ],
+            as: 'similarUsers',
+          },
+        },
+        {
+          $lookup: {
+            from: 'restaurants',
+            let: {
+              allFollowedRestaurants: {
+                $reduce: {
+                  input: '$similarUsers.following',
+                  initialValue: [],
+                  in: {
+                    $setUnion: ['$$value', '$$this'],
+                  },
+                },
               },
             },
-          ],
-          as: 'favoriteRestaurants',
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $in: ['$_id', '$$allFollowedRestaurants'] },
+                },
+              },
+            ],
+            as: 'favoriteRestaurants',
+          },
         },
-      },
-      {
-        $project: {
-          users: '$similarUsers',
-          restaurants: '$favoriteRestaurants',
+        {
+          $project: {
+            users: '$similarUsers',
+            restaurants: '$favoriteRestaurants',
+          },
         },
-      },
-    ];
+      ];
+      const result: FavoritesResponse[] = (await this.userModel
+        .aggregate(pipeline)
+        .exec()) as FavoritesResponse[];
 
-    const result: FavoritesResponse[] = (await this.userModel
-      .aggregate(pipeline)
-      .exec()) as FavoritesResponse[];
+      if (!result || result.length === 0) {
+        throw new NotFoundException(
+          `User with ID ${userId} not found or no favorites available`,
+        );
+      }
 
-    if (!result || result.length === 0) {
-      throw new Error('User not found or no favorites available');
+      return result[0];
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve user favorites',
+      );
     }
-
-    return result[0];
   }
 }

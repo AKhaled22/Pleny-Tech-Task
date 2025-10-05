@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import { FindNearbyRestaurantsDto } from './dto/find-nearby-restaurants.dto';
@@ -12,32 +17,74 @@ export class RestaurantsService {
   ) {}
 
   async findAll(where: any = {}): Promise<Restaurant[]> {
-    return this.restaurantModel.find(where).exec();
+    try {
+      return await this.restaurantModel.find(where).exec();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to retrieve restaurants',
+        error,
+      );
+    }
   }
 
   async findByIdOrSlug(identifier: string): Promise<Restaurant | null> {
-    if (isValidObjectId(identifier)) {
-      const restaurant = await this.restaurantModel.findById(identifier).exec();
-      if (restaurant) return restaurant;
+    try {
+      if (!identifier || identifier.trim() === '') {
+        throw new BadRequestException('Restaurant identifier is required');
+      }
+
+      if (isValidObjectId(identifier)) {
+        const restaurant = await this.restaurantModel
+          .findById(identifier)
+          .exec();
+        if (restaurant) return restaurant;
+      }
+
+      const restaurant = await this.restaurantModel
+        .findOne({ slug: identifier })
+        .exec();
+      if (!restaurant) {
+        throw new NotFoundException(
+          `Restaurant with identifier '${identifier}' not found`,
+        );
+      }
+
+      return restaurant;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to retrieve restaurant');
     }
-    return this.restaurantModel.findOne({ slug: identifier }).exec();
   }
 
   async findNearby(nearbyDto: FindNearbyRestaurantsDto): Promise<Restaurant[]> {
-    const { longitude, latitude, radius = 1000 } = nearbyDto;
+    try {
+      const { longitude, latitude, radius = 1000 } = nearbyDto;
 
-    return this.restaurantModel
-      .find({
-        location: {
-          $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: [longitude, latitude],
+      return await this.restaurantModel
+        .find({
+          location: {
+            $near: {
+              $geometry: {
+                type: 'Point',
+                coordinates: [longitude, latitude],
+              },
+              $maxDistance: radius,
             },
-            $maxDistance: radius,
           },
-        },
-      })
-      .exec();
+        })
+        .exec();
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to find nearby restaurants',
+      );
+    }
   }
 }
