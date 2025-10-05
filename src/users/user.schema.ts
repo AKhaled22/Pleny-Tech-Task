@@ -17,9 +17,6 @@ export class User {
     default: [],
   })
   following: Restaurant[];
-
-  // @Prop()
-  // followers
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

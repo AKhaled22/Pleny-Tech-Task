@@ -1,15 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { FavoritesResponse } from './dto/favorites-response.dto';
 import { User } from './user.schema';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  @Get('favorites/:id')
+  async findFavorites(@Param('id') id: string): Promise<FavoritesResponse> {
+    return this.usersService.findFavorites(id);
   }
 
   @Get()
@@ -20,10 +20,5 @@ export class UsersController {
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<User | null> {
     return this.usersService.findOne(id);
-  }
-
-  @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return this.usersService.delete(id);
   }
 }

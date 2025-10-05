@@ -14,6 +14,5 @@ export class FindNearbyRestaurantsDto {
   @IsOptional()
   @IsNumber()
   @Min(0.1)
-  @Max(10000) // Max 10km radius
-  radius?: number = 1000; // Default 1km in meters
+  radius?: number = 1000;
 }

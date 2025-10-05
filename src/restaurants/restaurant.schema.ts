@@ -43,11 +43,10 @@ export class Restaurant {
   })
   location: {
     type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
+    coordinates: [number, number];
   };
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);
 
-// Create 2dsphere index for geospatial queries
 RestaurantSchema.index({ location: '2dsphere' });

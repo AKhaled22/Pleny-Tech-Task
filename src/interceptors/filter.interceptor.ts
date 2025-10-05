@@ -45,11 +45,11 @@ export class FilterInterceptor<T extends keyof IModelMappingsForWhere>
         let parsedValue: any;
         if (typeof value === 'string') {
           if (key === '_id') {
-            parsedValue = value; // Exact match for IDs
+            parsedValue = value;
           } else if (arrayFields.includes(key)) {
-            parsedValue = { $in: [value] }; // Array contains check
+            parsedValue = { $in: [value] };
           } else {
-            parsedValue = { contains: value, mode: 'insensitive' }; // Text search
+            parsedValue = { contains: value, mode: 'insensitive' };
           }
         } else {
           parsedValue = value;
