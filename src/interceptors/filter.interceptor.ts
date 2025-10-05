@@ -63,7 +63,7 @@ export class FilterInterceptor<T extends keyof IModelMappingsForWhere>
         .filter((filter) => Object.keys(filter).length > 0);
 
       if (filters.length > 0) {
-        where.AND = filters;
+        where['$and'] = filters;
       }
     }
 
